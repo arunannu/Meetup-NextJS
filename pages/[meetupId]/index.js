@@ -1,48 +1,62 @@
 import React, { Fragment } from "react";
+import { MongoClient, ObjectId } from "mongodb";
 import MeetupDetails from "../../components/meetups/meetupDetails";
-const index = () => {
+
+const Index = (props) => {
   return (
     <Fragment>
       <MeetupDetails
-        id="m1"
-        title="first meetup"
-        image="https://nztraveltips.com/wp-content/uploads/2022/01/New-Chums-Beach-900x663.jpg"
-        address="Nature"
+        image={props.meetups.image}
+        title={props.meetups.title}
+        address={props.meetups.address}
       />
     </Fragment>
   );
 };
+
 export async function getStaticPaths() {
+  const client = await MongoClient.connect(
+    "mongodb+srv://arunannu:e88e5YpMltkeTwmX@cluster0.nclcqgz.mongodb.net/meetup?retryWrites=true&w=majority&appName=Cluster0"
+  );
+  const db = client.db();
+  const meetupsCollection = db.collection("meetups");
+  const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+
+  client.close();
   return {
-    fallback: false,
-    paths: [
-      {
-        params: {
-          meetupId: "m1",
-        },
-      },
-      {
-        params: {
-          meetupId: "m2",
-        },
-      },
-    ],
+    fallback: true,
+    paths: meetups.map((meetup) => ({
+      params: { meetupId: meetup._id.toString() },
+    })),
   };
 }
+
 export async function getStaticProps(context) {
   const meetupId = context.params.meetupId;
-  console.log(meetupId);
+
+  const client = await MongoClient.connect(
+    "mongodb+srv://arunannu:e88e5YpMltkeTwmX@cluster0.nclcqgz.mongodb.net/meetup?retryWrites=true&w=majority&appName=Cluster0"
+  );
+  const db = client.db();
+  const meetupsCollection = db.collection("meetups");
+  
+  // Correct the field to _id instead of id
+  const selectedMeetup = await meetupsCollection.findOne({
+    _id: new ObjectId(meetupId),
+  });
+
+  client.close();
+
   return {
     props: {
       meetups: {
-        id: meetupId,
-        title: "first meetup",
-        image:
-          "https://nztraveltips.com/wp-content/uploads/2022/01/New-Chums-Beach-900x663.jpg",
-        address: "Nature",
+        id: selectedMeetup._id.toString(),
+        title: selectedMeetup.title,
+        address: selectedMeetup.address,
+        image: selectedMeetup.image,
       },
     },
   };
 }
 
-export default index;
+export default Index;
